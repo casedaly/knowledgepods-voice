@@ -1,0 +1,206 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+  const msalConfig = {
+    auth: {
+      clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
+      authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
+      redirectUri: window.location.origin + window.location.pathname
+    },
+    cache: {
+      cacheLocation: "sessionStorage",
+      storeAuthStateInCookie: false
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KnowledgePods — Voice Capture</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 720px; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    p { margin: 0 0 16px; color: #444; font-size: 14px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    button, a.button {
+      appearance: none; border: 1px solid #ccc; background: #fff; color: #111;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer; text-decoration: none;
+      font-size: 14px; line-height: 1;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    textarea, input {
+      width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 10px;
+      padding: 10px 12px; font-size: 14px; margin-bottom: 12px;
+    }
+    label { display: block; font-size: 12px; color: #444; margin: 0 0 6px; }
+    audio { width: 100%; margin: 0 0 12px; }
+    .status { font-size: 12px; color: #444; margin-top: 8px; }
+    .hint { font-size: 12px; color: #666; margin-top: -8px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div id="authControls">
+  <button id="btnSignIn">Sign in with Microsoft</button>
+  <button id="btnSignOut" style="display:none;">Sign out</button>
+  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+</div>
+  <h1>KnowledgePods — Voice Capture</h1>
+  <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
+
+  <!-- ✅ Replace with your Power App "play" URL -->
+  <div class="row">
+    <button id="btnStart">Start</button>
+    <button id="btnStop" disabled>Stop</button>
+    <button id="btnCopy" disabled>Copy takeaway</button>
+    <a id="btnOpenApp" class="button" href="https://make.powerapps.com/e/Default-3ded3935-9621-4977-bd1a-67630274e9f1/canvas/?action=edit&app-id=%2Fproviders%2FMicrosoft.PowerApps%2Fapps%2F64cc0262-2204-41df-8420-511d201f46e6" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
+  </div>
+
+  <audio id="audio" controls></audio>
+
+  <label for="takeaway">Key takeaway (required)</label>
+  <textarea id="takeaway" rows="4" placeholder="What happened, and what should others do next time?"></textarea>
+  <div class="hint">Tip: keep it crisp — 1–2 sentences.</div>
+
+  <label for="context">Context (optional)</label>
+  <input id="context" placeholder="Client / meeting / situation…" />
+
+  <div id="status" class="status">Ready.</div>
+
+  <script>
+    // --- Minimal voice capture (no direct submission; no OAuth) ---
+    const btnStart = document.getElementById("btnStart");
+    const btnStop  = document.getElementById("btnStop");
+    const btnCopy  = document.getElementById("btnCopy");
+    const audioEl  = document.getElementById("audio");
+    const takeaway = document.getElementById("takeaway");
+    const context  = document.getElementById("context");
+    const statusEl = document.getElementById("status");
+
+    let recorder = null;
+    let chunks = [];
+    let lastBlobUrl = null;
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+    function canCopy() { return takeaway.value.trim().length > 0; }
+
+    takeaway.addEventListener("input", () => { btnCopy.disabled = !canCopy(); });
+
+    btnStart.addEventListener("click", async () => {
+      try {
+        setStatus("Requesting microphone…");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        chunks = [];
+        recorder = new MediaRecorder(stream);
+
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+        recorder.onstart = () => setStatus("Recording…");
+        recorder.onstop = () => {
+          // Release mic
+          stream.getTracks().forEach(t => t.stop());
+
+          const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+
+          if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+          lastBlobUrl = URL.createObjectURL(blob);
+
+          audioEl.src = lastBlobUrl;
+          setStatus("Stopped. (Optional) play back your recording.");
+
+          // If user hasn't typed anything, nudge them
+          if (!takeaway.value.trim()) setStatus("Stopped. Now type a 1–2 sentence takeaway.");
+        };
+
+        recorder.start();
+
+        btnStart.disabled = true;
+        btnStop.disabled = false;
+        setStatus("Recording…");
+      } catch (err) {
+        console.error(err);
+        setStatus("Mic blocked. Check browser/OS microphone permissions.");
+      }
+    });
+
+    btnStop.addEventListener("click", () => {
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+    });
+
+    btnCopy.addEventListener("click", async () => {
+      const text = takeaway.value.trim();
+      const ctx = context.value.trim();
+
+      // You can adjust this format to match your Power App fields
+      const payload = ctx ? `Takeaway: ${text}\nContext: ${ctx}` : text;
+
+      try {
+        await navigator.clipboard.writeText(payload);
+        setStatus("Copied ✅ Next: click “Open KnowledgePods Capture”, paste, and submit.");
+      } catch (err) {
+        console.error(err);
+        setStatus("Copy failed. Select the text and copy manually.");
+      }
+    });
+
+    // Initial state
+    btnCopy.disabled = !canCopy();
+  </script>
+<script>
+  const loginRequest = {
+    scopes: ["openid", "profile", "email"]
+  };
+
+  const btnSignIn = document.getElementById("btnSignIn");
+  const btnSignOut = document.getElementById("btnSignOut");
+  const userInfo = document.getElementById("userInfo");
+
+  function updateUI(account) {
+    if (account) {
+      btnSignIn.style.display = "none";
+      btnSignOut.style.display = "inline-block";
+      userInfo.textContent = `Signed in as: ${account.username}`;
+    } else {
+      btnSignIn.style.display = "inline-block";
+      btnSignOut.style.display = "none";
+      userInfo.textContent = "";
+    }
+  }
+
+  btnSignIn.onclick = async () => {
+    try {
+      const loginResponse = await msalInstance.loginPopup(loginRequest);
+      msalInstance.setActiveAccount(loginResponse.account);
+      updateUI(loginResponse.account);
+    } catch (err) {
+      console.error("Login failed", err);
+      alert("Sign-in failed. Check console.");
+    }
+  };
+
+  btnSignOut.onclick = () => {
+    const account = msalInstance.getActiveAccount();
+    if (account) {
+      msalInstance.logoutPopup({ account });
+    }
+    updateUI(null);
+  };
+
+  // Restore session on refresh
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+    updateUI(accounts[0]);
+  }
+<script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+<script>
+  console.log("JS LOADED");
+</script>
+</body>
+</html>

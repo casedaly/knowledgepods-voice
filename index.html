@@ -173,7 +173,10 @@
     }
   }
 
-  btnSignIn.onclick = async () => {
+  btnSignIn.onclick = () => {
+  console.log("SIGN IN CLICKED");
+};
+
     try {
       const loginResponse = await msalInstance.loginPopup(loginRequest);
       msalInstance.setActiveAccount(loginResponse.account);
@@ -204,3 +207,4 @@
 </script>
 </body>
 </html>
+

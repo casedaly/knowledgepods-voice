@@ -29,12 +29,15 @@
 
 <body>
 
-  <!-- Auth controls -->
-  <div id="authControls">
-    <button id="btnSignIn">Sign in with Microsoft</button>
-    <button id="btnSignOut" style="display:none;">Sign out</button>
-    <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
-  </div>
+<div id="authControls">
+  <button id="btnSignIn">Sign in with Microsoft</button>
+  <button id="btnSignOut" style="display:none;">Sign out</button>
+
+  <!-- ADD THIS LINE -->
+  <button id="btnGetToken">Get token (test)</button>
+
+  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+</div>
 
   <h1>KnowledgePods — Voice Capture</h1>
   <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
@@ -214,6 +217,52 @@
       msalInstance.setActiveAccount(accounts[0]);
       updateUI(accounts[0]);
     }
+// === TOKEN TEST BUTTON ===
+const btnGetToken = document.getElementById("btnGetToken");
+
+btnGetToken.addEventListener("click", async () => {
+  try {
+    const account = msalInstance.getActiveAccount();
+    if (!account) {
+      alert("No active account. Sign in first.");
+      return;
+    }
+
+    const tokenRequest = {
+      account,
+      scopes: ["User.Read"]
+    };
+
+    // Try silent first
+    const result = await msalInstance.acquireTokenSilent(tokenRequest);
+    console.log("ACCESS TOKEN (Graph)", result.accessToken);
+    alert("Token acquired! Check Console.");
+
+  } catch (err) {
+    console.error("Token error", err);
+
+    // Fallback to popup if required
+    if (
+      err.errorCode === "interaction_required" ||
+      err.errorCode === "consent_required"
+    ) {
+      try {
+        const account = msalInstance.getActiveAccount();
+        const result = await msalInstance.acquireTokenPopup({
+          account,
+          scopes: ["User.Read"]
+        });
+        console.log("ACCESS TOKEN (Graph)", result.accessToken);
+        alert("Token acquired via popup! Check Console.");
+      } catch (popupErr) {
+        console.error("Popup token error", popupErr);
+        alert(popupErr.message || "Token popup failed.");
+      }
+    } else {
+      alert(err.message || "Token acquisition failed.");
+    }
+  }
+});
 
     // Scopes for basic sign-in
     const loginRequest = { scopes: ["openid", "profile", "email"] };

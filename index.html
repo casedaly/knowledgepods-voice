@@ -48,11 +48,6 @@
   <input id="context" placeholder="Client / meeting / situation…" />
 
   <div id="status" class="status">Ready.</div>
-<div id="authControls">
-  <button id="btnSignIn">Sign in with Microsoft</button>
-  <button id="btnSignOut" style="display:none;">Sign out</button>
-  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
-</div>
 
 <script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
 <script>
@@ -72,7 +67,12 @@
 </script>
 
 
-  <script>
+<script>
+<div id="authControls">
+  <button id="btnSignIn">Sign in with Microsoft</button>
+  <button id="btnSignOut" style="display:none;">Sign out</button>
+  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+</div>
     // --- Minimal voice capture (no direct submission; no OAuth) ---
     const btnStart = document.getElementById("btnStart");
     const btnStop  = document.getElementById("btnStop");

@@ -228,56 +228,63 @@ if (!msalInstance.getActiveAccount()) {
 // === TOKEN TEST BUTTON ===
 const btnGetToken = document.getElementById("btnGetToken");
 
-btnGetToken.addEventListener("click", async () => {
-  try {
-    const account =
-  msalInstance.getActiveAccount() ||
-  msalInstance.getAllAccounts()[0];
+if (btnGetToken) {
+  btnGetToken.addEventListener("click", async () => {
+    try {
+      const account =
+        msalInstance.getActiveAccount() ||
+        msalInstance.getAllAccounts()[0];
 
-if (account) {
-  msalInstance.setActiveAccount(account);
-}
-
-    if (!account) {
-      alert("No active account. Sign in first.");
-      return;
-    }
-
-    const tokenRequest = {
-      account,
-      scopes: ["User.Read"]
-    };
-
-    // Try silent first
-    const result = await msalInstance.acquireTokenSilent(tokenRequest);
-    console.log("ACCESS TOKEN (Graph)", result.accessToken);
-    alert("Token acquired! Check Console.");
-
-  } catch (err) {
-    console.error("Token error", err);
-
-    // Fallback to popup if required
-    if (
-      err.errorCode === "interaction_required" ||
-      err.errorCode === "consent_required"
-    ) {
-      try {
-        const account = msalInstance.getActiveAccount();
-        const result = await msalInstance.acquireTokenPopup({
-          account,
-          scopes: ["User.Read"]
-        });
-        console.log("ACCESS TOKEN (Graph)", result.accessToken);
-        alert("Token acquired via popup! Check Console.");
-      } catch (popupErr) {
-        console.error("Popup token error", popupErr);
-        alert(popupErr.message || "Token popup failed.");
+      if (!account) {
+        alert("No account found. Click Sign in first.");
+        return;
       }
-    } else {
-      alert(err.message || "Token acquisition failed.");
+
+      msalInstance.setActiveAccount(account);
+
+      const tokenRequest = {
+        account,
+        scopes: ["User.Read"]
+      };
+
+      // Try silent first
+      const result = await msalInstance.acquireTokenSilent(tokenRequest);
+      console.log("ACCESS TOKEN (Graph)", result.accessToken);
+      alert("Token acquired! Check Console.");
+
+    } catch (err) {
+      console.error("Token error", err);
+
+      // Fallback if interaction required
+      if (
+        err.errorCode === "interaction_required" ||
+        err.errorCode === "consent_required"
+      ) {
+        try {
+          const account =
+            msalInstance.getActiveAccount() ||
+            msalInstance.getAllAccounts()[0];
+
+          const popupResult = await msalInstance.acquireTokenPopup({
+            account,
+            scopes: ["User.Read"]
+          });
+
+          console.log("ACCESS TOKEN (Graph)", popupResult.accessToken);
+          alert("Token acquired via popup! Check Console.");
+
+        } catch (popupErr) {
+          console.error("Popup token error", popupErr);
+          alert(popupErr.message || "Popup token failed.");
+        }
+      } else {
+        alert(err.message || "Token acquisition failed.");
+      }
     }
-  }
-});
+  });
+} else {
+  console.warn("btnGetToken not found in DOM.");
+}
 
     // Scopes for basic sign-in
     const loginRequest = { scopes: ["openid", "profile", "email"] };

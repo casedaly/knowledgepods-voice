@@ -29,6 +29,7 @@
 
 <body>
 
+  <!-- Auth controls -->
   <div id="authControls">
     <button id="btnSignIn">Sign in with Microsoft</button>
     <button id="btnSignOut" style="display:none;">Sign out</button>
@@ -43,6 +44,7 @@
     <button id="btnStop" disabled>Stop</button>
     <button id="btnCopy" disabled>Copy takeaway</button>
 
+    <!-- Your Power App "play" URL (kept as provided) -->
     <a id="btnOpenApp" class="button"
        href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537"
        target="_blank" rel="noopener">Open KnowledgePods Capture</a>
@@ -59,16 +61,16 @@
 
   <div id="status" class="status">Ready.</div>
 
-  <!-- 1) Load MSAL library BEFORE your app script -->
-  <script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+  <!-- ✅ Fix for Problem 2: use alternate CDN for MSAL (less likely to be blocked) -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js"></script>
 
-  <!-- 2) One single script, after the HTML so elements exist -->
+  <!-- ✅ Fix for Problem 1: only ONE script block, and it binds after DOM is ready -->
   <script>
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM READY");
 
     /* ===============================
-       VOICE CAPTURE (works now)
+       SAFETY CHECK: confirm elements exist
     =============================== */
     const btnStart = document.getElementById("btnStart");
     const btnStop  = document.getElementById("btnStop");
@@ -78,6 +80,27 @@
     const context  = document.getElementById("context");
     const statusEl = document.getElementById("status");
 
+    const btnSignIn = document.getElementById("btnSignIn");
+    const btnSignOut = document.getElementById("btnSignOut");
+    const userInfo = document.getElementById("userInfo");
+
+    console.log("Found elements:", {
+      btnStart, btnStop, btnCopy, audioEl, takeaway, context, statusEl,
+      btnSignIn, btnSignOut, userInfo
+    });
+
+    // If ANY required element is missing, stop early with a clear error.
+    const required = { btnStart, btnStop, btnCopy, audioEl, takeaway, context, statusEl, btnSignIn, btnSignOut, userInfo };
+    const missing = Object.entries(required).filter(([_, v]) => !v).map(([k]) => k);
+    if (missing.length) {
+      console.error("Missing elements (check your IDs in HTML):", missing.join(", "));
+      alert("Page JS stopped: missing elements: " + missing.join(", "));
+      return;
+    }
+
+    /* ===============================
+       VOICE CAPTURE
+    =============================== */
     let recorder = null;
     let chunks = [];
     let lastBlobUrl = null;
@@ -95,10 +118,14 @@
         chunks = [];
         recorder = new MediaRecorder(stream);
 
-        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
 
         recorder.onstart = () => setStatus("Recording…");
+
         recorder.onstop = () => {
+          // Release mic
           stream.getTracks().forEach(t => t.stop());
 
           const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
@@ -139,30 +166,83 @@
       }
     });
 
+    // Initial state
     btnCopy.disabled = !canCopy();
 
     /* ===============================
-       MSAL (click test)
+       MSAL (Sign-in wiring)
+       (You can keep this as click-test first; then enable loginPopup)
     =============================== */
+
+    console.log("MSAL present?", typeof msal !== "undefined");
+    if (typeof msal === "undefined") {
+      console.error("MSAL did not load. Likely blocked by an extension/network.");
+      alert("MSAL did not load. Try disabling ad-blockers and refresh.");
+      // We still allow voice capture to work.
+      return;
+    }
+
     const msalConfig = {
       auth: {
         clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
         authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
         redirectUri: window.location.origin + window.location.pathname
       },
-      cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+      cache: {
+        cacheLocation: "sessionStorage",
+        storeAuthStateInCookie: false
+      }
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    const btnSignIn = document.getElementById("btnSignIn");
-    const btnSignOut = document.getElementById("btnSignOut");
-    const userInfo = document.getElementById("userInfo");
+    function updateUI(account) {
+      if (account) {
+        btnSignIn.style.display = "none";
+        btnSignOut.style.display = "inline-block";
+        userInfo.textContent = `Signed in as: ${account.username}`;
+      } else {
+        btnSignIn.style.display = "inline-block";
+        btnSignOut.style.display = "none";
+        userInfo.textContent = "";
+      }
+    }
 
-    console.log("Buttons found:", { btnSignIn, btnSignOut, btnStart, btnStop, btnCopy });
+    // Restore session on refresh
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      msalInstance.setActiveAccount(accounts[0]);
+      updateUI(accounts[0]);
+    }
 
-    btnSignIn.addEventListener("click", () => {
+    // Scopes for basic sign-in
+    const loginRequest = { scopes: ["openid", "profile", "email"] };
+
+    btnSignIn.addEventListener("click", async () => {
       console.log("SIGN IN CLICKED");
+      try {
+        console.log("LOGIN START");
+        const loginResponse = await msalInstance.loginPopup(loginRequest);
+        console.log("LOGIN RESPONSE", loginResponse);
+        msalInstance.setActiveAccount(loginResponse.account);
+        updateUI(loginResponse.account);
+      } catch (err) {
+        console.error("Login failed", err);
+        alert(err?.message || "Sign-in failed. Check console.");
+      }
+    });
+
+    btnSignOut.addEventListener("click", async () => {
+      try {
+        const account = msalInstance.getActiveAccount();
+        if (account) {
+          await msalInstance.logoutPopup({ account });
+        }
+      } catch (err) {
+        console.error("Logout failed", err);
+      } finally {
+        updateUI(null);
+      }
     });
 
   });

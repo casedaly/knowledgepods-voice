@@ -1,22 +1,6 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-<script>
-  const msalConfig = {
-    auth: {
-      clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
-      authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
-      redirectUri: window.location.origin + window.location.pathname
-    },
-    cache: {
-      cacheLocation: "sessionStorage",
-      storeAuthStateInCookie: false
-    }
-  };
-
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>KnowledgePods — Voice Capture</title>
@@ -43,11 +27,6 @@
   </style>
 </head>
 <body>
-<div id="authControls">
-  <button id="btnSignIn">Sign in with Microsoft</button>
-  <button id="btnSignOut" style="display:none;">Sign out</button>
-  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
-</div>
   <h1>KnowledgePods — Voice Capture</h1>
   <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
 
@@ -56,7 +35,7 @@
     <button id="btnStart">Start</button>
     <button id="btnStop" disabled>Stop</button>
     <button id="btnCopy" disabled>Copy takeaway</button>
-    <a id="btnOpenApp" class="button" href="https://make.powerapps.com/e/Default-3ded3935-9621-4977-bd1a-67630274e9f1/canvas/?action=edit&app-id=%2Fproviders%2FMicrosoft.PowerApps%2Fapps%2F64cc0262-2204-41df-8420-511d201f46e6" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
+    <a id="btnOpenApp" class="button" href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
   </div>
 
   <audio id="audio" controls></audio>
@@ -69,6 +48,29 @@
   <input id="context" placeholder="Client / meeting / situation…" />
 
   <div id="status" class="status">Ready.</div>
+<div id="authControls">
+  <button id="btnSignIn">Sign in with Microsoft</button>
+  <button id="btnSignOut" style="display:none;">Sign out</button>
+  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+</div>
+
+<script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+<script>
+  const msalConfig = {
+    auth: {
+      clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
+      authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
+      redirectUri: window.location.origin + window.location.pathname
+    },
+    cache: {
+      cacheLocation: "sessionStorage",
+      storeAuthStateInCookie: false
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+</script>
+
 
   <script>
     // --- Minimal voice capture (no direct submission; no OAuth) ---
@@ -173,10 +175,7 @@
     }
   }
 
-  btnSignIn.onclick = () => {
-  console.log("SIGN IN CLICKED");
-};
-
+  btnSignIn.onclick = async () => {
     try {
       const loginResponse = await msalInstance.loginPopup(loginRequest);
       msalInstance.setActiveAccount(loginResponse.account);
@@ -201,10 +200,7 @@
     msalInstance.setActiveAccount(accounts[0]);
     updateUI(accounts[0]);
   }
-<script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
-<script>
-  console.log("JS LOADED");
 </script>
+
 </body>
 </html>
-

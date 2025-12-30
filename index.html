@@ -42,10 +42,11 @@
   <h1>KnowledgePods — Voice Capture</h1>
   <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
 
-  <div class="row">
-    <button id="btnStart">Start</button>
-    <button id="btnStop" disabled>Stop</button>
-    <button id="btnCopy" disabled>Copy takeaway</button>
+<div class="row">
+  <button id="btnStart">Start</button>
+  <button id="btnStop" disabled>Stop</button>
+  <button id="btnCopy" disabled>Copy takeaway</button>
+  <button id="btnSubmitDraft" disabled>Submit draft</button>
 
     <!-- Your Power App "play" URL (kept as provided) -->
     <a id="btnOpenApp" class="button"
@@ -198,6 +199,9 @@
     };
 
     const msalInstance = new msal.PublicClientApplication(msalConfig);
+const FLOW_URL = "PASTE_YOUR_HTTP_TRIGGER_URL_HERE";
+const SOURCE_CHANNEL = "Voice-Browser";
+const FLOW_SCOPES = ["https://service.flow.microsoft.com/.default"];
 
     function updateUI(account) {
       if (account) {
@@ -269,6 +273,89 @@ if (btnGetToken) {
             account,
             scopes: ["User.Read"]
           });
+/* ===============================
+   SUBMIT DRAFT TO FLOW (ADD HERE)
+=============================== */
+
+const btnSubmitDraft = document.getElementById("btnSubmitDraft");
+
+// Enable submit only when takeaway has text
+function updateSubmitEnabled() {
+  btnSubmitDraft.disabled = takeaway.value.trim().length === 0;
+}
+takeaway.addEventListener("input", updateSubmitEnabled);
+updateSubmitEnabled();
+
+btnSubmitDraft.addEventListener("click", async () => {
+  try {
+    // 1) Get signed-in account
+    const account =
+      msalInstance.getActiveAccount() ||
+      msalInstance.getAllAccounts()[0];
+
+    if (!account) {
+      alert("Sign in first, then submit.");
+      return;
+    }
+    msalInstance.setActiveAccount(account);
+
+    // 2) Acquire token for Power Automate
+    let tokenResult;
+    try {
+      tokenResult = await msalInstance.acquireTokenSilent({
+        account,
+        scopes: FLOW_SCOPES
+      });
+    } catch {
+      tokenResult = await msalInstance.acquireTokenPopup({
+        account,
+        scopes: FLOW_SCOPES
+      });
+    }
+
+    // 3) Build payload
+    const text = takeaway.value.trim();
+    const ctx = context.value.trim();
+    const draftText = ctx
+      ? `Takeaway: ${text}\nContext: ${ctx}`
+      : text;
+
+    const payload = {
+      draftText,
+      sourceChannel: SOURCE_CHANNEL,
+      context: ctx || "",
+      createdByEmail: account.username
+    };
+
+    // 4) POST to Flow
+    statusEl.textContent = "Submitting draft…";
+
+    const resp = await fetch(FLOW_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${tokenResult.accessToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.error("Flow error:", resp.status, body);
+      statusEl.textContent = "Submit failed. Check console.";
+      alert(`Submit failed (${resp.status}).`);
+      return;
+    }
+
+    statusEl.textContent = "Submitted ✅ Draft created.";
+    alert("Submitted ✅ Draft created.");
+
+  } catch (err) {
+    console.error("Submit exception", err);
+    statusEl.textContent = "Submit failed. Check console.";
+    alert(err?.message || "Submit failed.");
+  }
+});
 
           console.log("ACCESS TOKEN (Graph)", popupResult.accessToken);
           alert("Token acquired via popup! Check Console.");

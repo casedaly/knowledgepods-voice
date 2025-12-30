@@ -27,33 +27,7 @@
   </style>
 </head>
 <body>
-  <h1>KnowledgePods — Voice Capture</h1>
-  <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
-
-  <!-- ✅ Replace with your Power App "play" URL -->
-  <div class="row">
-    <button id="btnStart">Start</button>
-    <button id="btnStop" disabled>Stop</button>
-    <button id="btnCopy" disabled>Copy takeaway</button>
-    <a id="btnOpenApp" class="button" href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
-  </div>
-
-  <audio id="audio" controls></audio>
-
-  <label for="takeaway">Key takeaway (required)</label>
-  <textarea id="takeaway" rows="4" placeholder="What happened, and what should others do next time?"></textarea>
-  <div class="hint">Tip: keep it crisp — 1–2 sentences.</div>
-
-  <label for="context">Context (optional)</label>
-  <input id="context" placeholder="Client / meeting / situation…" />
-
-  <div id="status" class="status">Ready.</div>
-<div id="authControls">
-  <button id="btnSignIn">Sign in with Microsoft</button>
-  <button id="btnSignOut" style="display:none;">Sign out</button>
-  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
-</div>
-  <script>
+<script>
     // --- Minimal voice capture (no direct submission; no OAuth) ---
     const btnStart = document.getElementById("btnStart");
     const btnStop  = document.getElementById("btnStop");
@@ -135,7 +109,33 @@
     // Initial state
     btnCopy.disabled = !canCopy();
   </script>
+  <h1>KnowledgePods — Voice Capture</h1>
+  <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
 
+  <!-- ✅ Replace with your Power App "play" URL -->
+  <div class="row">
+    <button id="btnStart">Start</button>
+    <button id="btnStop" disabled>Stop</button>
+    <button id="btnCopy" disabled>Copy takeaway</button>
+    <a id="btnOpenApp" class="button" href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
+  </div>
+
+  <audio id="audio" controls></audio>
+
+  <label for="takeaway">Key takeaway (required)</label>
+  <textarea id="takeaway" rows="4" placeholder="What happened, and what should others do next time?"></textarea>
+  <div class="hint">Tip: keep it crisp — 1–2 sentences.</div>
+
+  <label for="context">Context (optional)</label>
+  <input id="context" placeholder="Client / meeting / situation…" />
+
+  <div id="status" class="status">Ready.</div>
+<div id="authControls">
+  <button id="btnSignIn">Sign in with Microsoft</button>
+  <button id="btnSignOut" style="display:none;">Sign out</button>
+  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+</div>
+  
 <script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {

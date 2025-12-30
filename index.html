@@ -26,14 +26,50 @@
     .hint { font-size: 12px; color: #666; margin-top: -8px; margin-bottom: 12px; }
   </style>
 </head>
+
 <body>
-<div id="authControls">
-  <button id="btnSignIn">Sign in with Microsoft</button>
-  <button id="btnSignOut" style="display:none;">Sign out</button>
-  <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
-</div>
-<script>
-    // --- Minimal voice capture (no direct submission; no OAuth) ---
+
+  <div id="authControls">
+    <button id="btnSignIn">Sign in with Microsoft</button>
+    <button id="btnSignOut" style="display:none;">Sign out</button>
+    <div id="userInfo" style="margin-top:8px; font-size:0.9em;"></div>
+  </div>
+
+  <h1>KnowledgePods — Voice Capture</h1>
+  <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
+
+  <div class="row">
+    <button id="btnStart">Start</button>
+    <button id="btnStop" disabled>Stop</button>
+    <button id="btnCopy" disabled>Copy takeaway</button>
+
+    <a id="btnOpenApp" class="button"
+       href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537"
+       target="_blank" rel="noopener">Open KnowledgePods Capture</a>
+  </div>
+
+  <audio id="audio" controls></audio>
+
+  <label for="takeaway">Key takeaway (required)</label>
+  <textarea id="takeaway" rows="4" placeholder="What happened, and what should others do next time?"></textarea>
+  <div class="hint">Tip: keep it crisp — 1–2 sentences.</div>
+
+  <label for="context">Context (optional)</label>
+  <input id="context" placeholder="Client / meeting / situation…" />
+
+  <div id="status" class="status">Ready.</div>
+
+  <!-- 1) Load MSAL library BEFORE your app script -->
+  <script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+
+  <!-- 2) One single script, after the HTML so elements exist -->
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM READY");
+
+    /* ===============================
+       VOICE CAPTURE (works now)
+    =============================== */
     const btnStart = document.getElementById("btnStart");
     const btnStop  = document.getElementById("btnStop");
     const btnCopy  = document.getElementById("btnCopy");
@@ -63,7 +99,6 @@
 
         recorder.onstart = () => setStatus("Recording…");
         recorder.onstop = () => {
-          // Release mic
           stream.getTracks().forEach(t => t.stop());
 
           const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
@@ -72,17 +107,12 @@
           lastBlobUrl = URL.createObjectURL(blob);
 
           audioEl.src = lastBlobUrl;
-          setStatus("Stopped. (Optional) play back your recording.");
-
-          // If user hasn't typed anything, nudge them
-          if (!takeaway.value.trim()) setStatus("Stopped. Now type a 1–2 sentence takeaway.");
+          setStatus("Stopped. Now type a 1–2 sentence takeaway.");
         };
 
         recorder.start();
-
         btnStart.disabled = true;
         btnStop.disabled = false;
-        setStatus("Recording…");
       } catch (err) {
         console.error(err);
         setStatus("Mic blocked. Check browser/OS microphone permissions.");
@@ -98,8 +128,6 @@
     btnCopy.addEventListener("click", async () => {
       const text = takeaway.value.trim();
       const ctx = context.value.trim();
-
-      // You can adjust this format to match your Power App fields
       const payload = ctx ? `Takeaway: ${text}\nContext: ${ctx}` : text;
 
       try {
@@ -111,103 +139,34 @@
       }
     });
 
-    // Initial state
     btnCopy.disabled = !canCopy();
-  </script>
-  <h1>KnowledgePods — Voice Capture</h1>
-  <p>Record a quick thought. Type a 1–2 sentence takeaway. Copy it, then open KnowledgePods Capture to submit.</p>
 
-  <!-- ✅ Replace with your Power App "play" URL -->
-  <div class="row">
-    <button id="btnStart">Start</button>
-    <button id="btnStop" disabled>Stop</button>
-    <button id="btnCopy" disabled>Copy takeaway</button>
-    <a id="btnOpenApp" class="button" href="https://apps.powerapps.com/play/e/default-3ded3935-9621-4977-bd1a-67630274e9f1/a/e629d1bd-d215-4f65-ba38-1e766eedc96c?tenantId=3ded3935-9621-4977-bd1a-67630274e9f1&hint=5c20a289-b50c-42b9-950f-0d848fef5580&sourcetime=1767108739537" target="_blank" rel="noopener">Open KnowledgePods Capture</a>
-  </div>
+    /* ===============================
+       MSAL (click test)
+    =============================== */
+    const msalConfig = {
+      auth: {
+        clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
+        authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
+        redirectUri: window.location.origin + window.location.pathname
+      },
+      cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false }
+    };
 
-  <audio id="audio" controls></audio>
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-  <label for="takeaway">Key takeaway (required)</label>
-  <textarea id="takeaway" rows="4" placeholder="What happened, and what should others do next time?"></textarea>
-  <div class="hint">Tip: keep it crisp — 1–2 sentences.</div>
+    const btnSignIn = document.getElementById("btnSignIn");
+    const btnSignOut = document.getElementById("btnSignOut");
+    const userInfo = document.getElementById("userInfo");
 
-  <label for="context">Context (optional)</label>
-  <input id="context" placeholder="Client / meeting / situation…" />
+    console.log("Buttons found:", { btnSignIn, btnSignOut, btnStart, btnStop, btnCopy });
 
-  <div id="status" class="status">Ready.</div>
+    btnSignIn.addEventListener("click", () => {
+      console.log("SIGN IN CLICKED");
+    });
 
-<script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  console.log("DOM READY");
-
-  /* ===============================
-     MSAL CONFIG
-  =============================== */
-
-  const msalConfig = {
-    auth: {
-      clientId: "5ab26cbf-4bb5-444a-a7ac-5ac8d5e159bc",
-      authority: "https://login.microsoftonline.com/3ded3935-9621-4977-bd1a-67630274e9f1",
-      redirectUri: window.location.origin + window.location.pathname
-    },
-    cache: {
-      cacheLocation: "sessionStorage",
-      storeAuthStateInCookie: false
-    }
-  };
-
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  /* ===============================
-     UI ELEMENT REFERENCES
-  =============================== */
-
-  const btnSignIn = document.getElementById("btnSignIn");
-  const btnSignOut = document.getElementById("btnSignOut");
-  const userInfo = document.getElementById("userInfo");
-
-  console.log("Buttons found:", {
-    btnSignIn,
-    btnSignOut
   });
-
-  /* ===============================
-     CLICK HANDLERS (TEST MODE)
-  =============================== */
-
-  btnSignIn.onclick = () => {
-    console.log("SIGN IN CLICKED");
-  };
-
-});
-</script>
-    try {
-      const loginResponse = await msalInstance.loginPopup(loginRequest);
-      msalInstance.setActiveAccount(loginResponse.account);
-      updateUI(loginResponse.account);
-    } catch (err) {
-      console.error("Login failed", err);
-      alert("Sign-in failed. Check console.");
-    }
-  };
-
-  btnSignOut.onclick = () => {
-    const account = msalInstance.getActiveAccount();
-    if (account) {
-      msalInstance.logoutPopup({ account });
-    }
-    updateUI(null);
-  };
-
-  // Restore session on refresh
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
-    msalInstance.setActiveAccount(accounts[0]);
-    updateUI(accounts[0]);
-  }
-</script>
+  </script>
 
 </body>
 </html>

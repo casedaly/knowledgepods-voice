@@ -217,12 +217,27 @@
       msalInstance.setActiveAccount(accounts[0]);
       updateUI(accounts[0]);
     }
+// Extra safety: if UI shows signed-in but active account is missing, set it
+if (!msalInstance.getActiveAccount()) {
+  const accts = msalInstance.getAllAccounts();
+  if (accts.length > 0) {
+    msalInstance.setActiveAccount(accts[0]);
+  }
+}
+
 // === TOKEN TEST BUTTON ===
 const btnGetToken = document.getElementById("btnGetToken");
 
 btnGetToken.addEventListener("click", async () => {
   try {
-    const account = msalInstance.getActiveAccount();
+    const account =
+  msalInstance.getActiveAccount() ||
+  msalInstance.getAllAccounts()[0];
+
+if (account) {
+  msalInstance.setActiveAccount(account);
+}
+
     if (!account) {
       alert("No active account. Sign in first.");
       return;

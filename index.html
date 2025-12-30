@@ -283,6 +283,8 @@ const btnSubmitDraft = document.getElementById("btnSubmitDraft");
 function updateSubmitEnabled() {
   btnSubmitDraft.disabled = takeaway.value.trim().length === 0;
 }
+console.log("takeaway length:", takeaway.value.trim().length);
+
 takeaway.addEventListener("input", updateSubmitEnabled);
 updateSubmitEnabled();
 

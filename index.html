@@ -72,13 +72,96 @@
   <script>
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM READY");
-// --- DIAGNOSTIC: delegated click for Submit draft (guaranteed to fire) ---
-document.addEventListener("click", (e) => {
-  if (e.target && e.target.id === "btnSubmitDraft") {
-    console.log("DELEGATED SUBMIT CLICK");
-    alert("DELEGATED SUBMIT CLICK");
+// --- REAL SUBMIT (delegated): token + POST to Flow ---
+document.addEventListener("click", async (e) => {
+  if (!e.target || e.target.id !== "btnSubmitDraft") return;
+
+  try {
+    // Prevent double-clicks
+    e.target.disabled = true;
+
+    // Basic validation
+    const text = takeaway.value.trim();
+    if (!text) {
+      alert("Type a Key takeaway first.");
+      return;
+    }
+
+    // 1) Get signed-in account
+    const account =
+      msalInstance.getActiveAccount() ||
+      msalInstance.getAllAccounts()[0];
+
+    if (!account) {
+      alert("Sign in first, then submit.");
+      return;
+    }
+    msalInstance.setActiveAccount(account);
+
+    // 2) Acquire token for Power Automate (Flow service)
+    let tokenResult;
+    try {
+      tokenResult = await msalInstance.acquireTokenSilent({
+        account,
+        scopes: FLOW_SCOPES
+      });
+    } catch {
+      tokenResult = await msalInstance.acquireTokenPopup({
+        account,
+        scopes: FLOW_SCOPES
+      });
+    }
+
+    // 3) Build payload (matches your Flow schema)
+    const ctx = context.value.trim();
+    const draftText = ctx ? `Takeaway: ${text}\nContext: ${ctx}` : text;
+
+    const payload = {
+      draftText,
+      sourceChannel: SOURCE_CHANNEL,     // must be "Voice-Browser"
+      context: ctx || "",
+      createdByEmail: account.username
+    };
+
+    // 4) POST to Flow
+    statusEl.textContent = "Submitting draft…";
+
+    if (!FLOW_URL || FLOW_URL.includes("PASTE_YOUR_HTTP_TRIGGER_URL_HERE")) {
+      throw new Error("FLOW_URL is not set. Paste your Flow HTTP trigger URL into FLOW_URL.");
+    }
+
+    const resp = await fetch(FLOW_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${tokenResult.accessToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      console.error("Flow error:", resp.status, body);
+      statusEl.textContent = `Submit failed (${resp.status}). Check console.`;
+      alert(`Submit failed (${resp.status}). Check console.`);
+      return;
+    }
+
+    statusEl.textContent = "Submitted ✅ Draft created in PodBacklog.";
+    alert("Submitted ✅ Draft created.");
+
+  } catch (err) {
+    console.error("Submit exception", err);
+    statusEl.textContent = "Submit failed. Check console.";
+    alert(err?.message || "Submit failed. Check console.");
+  } finally {
+    // Re-enable if takeaway still has text
+    const len = takeaway.value.trim().length;
+    const btn = document.getElementById("btnSubmitDraft");
+    if (btn) btn.disabled = (len === 0);
   }
 });
+
 
 
     /* ===============================

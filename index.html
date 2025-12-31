@@ -72,6 +72,14 @@
   <script>
   document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM READY");
+// --- DIAGNOSTIC: delegated click for Submit draft (guaranteed to fire) ---
+document.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "btnSubmitDraft") {
+    console.log("DELEGATED SUBMIT CLICK");
+    alert("DELEGATED SUBMIT CLICK");
+  }
+});
+
 
     /* ===============================
        SAFETY CHECK: confirm elements exist

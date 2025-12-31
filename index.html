@@ -83,6 +83,24 @@
     const takeaway = document.getElementById("takeaway");
     const context  = document.getElementById("context");
     const statusEl = document.getElementById("status");
+// ---- SUBMIT BUTTON ENABLE/DISABLE (REPLACE WITH THIS) ----
+const btnSubmitDraft = document.getElementById("btnSubmitDraft");
+
+// Hard stop if IDs don't match (prevents silent failure)
+console.log("Enable check:", { takeaway, btnSubmitDraft });
+
+function updateSubmitEnabled() {
+  const len = takeaway.value.trim().length;
+  console.log("takeaway length:", len);
+  btnSubmitDraft.disabled = (len === 0);
+}
+
+// Attach listeners (input + change covers all cases)
+takeaway.addEventListener("input", updateSubmitEnabled);
+takeaway.addEventListener("change", updateSubmitEnabled);
+
+// Run once on load
+updateSubmitEnabled();
 
     const btnSignIn = document.getElementById("btnSignIn");
     const btnSignOut = document.getElementById("btnSignOut");
@@ -276,18 +294,6 @@ if (btnGetToken) {
 /* ===============================
    SUBMIT DRAFT TO FLOW (ADD HERE)
 =============================== */
-
-const btnSubmitDraft = document.getElementById("btnSubmitDraft");
-
-// Enable submit only when takeaway has text
-function updateSubmitEnabled() {
-  const len = takeaway.value.trim().length;
-  console.log("takeaway length:", len);
-  btnSubmitDraft.disabled = (len === 0);
-}
-
-takeaway.addEventListener("input", updateSubmitEnabled);
-updateSubmitEnabled();
 
 btnSubmitDraft.addEventListener("click", async () => {
   try {
